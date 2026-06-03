@@ -89,11 +89,11 @@ If the Custom On/Off Menu is not installed, the script can still run standalone.
 
 2. Paste the content of the FrameByFrame Buttons script into the injector.
 
-3. Optional: Install the Custom On/Off Menu script if you want to toggle this script directly from the VideoOSD submenu.
+3. Optional: Install the Custom On/Off Menu script if you want to toggle this script directly from the video playback submenu.
 
 4. Save and reload Jellyfin Web.
 
-5. Start video playback and open the VideoOSD.
+5. Start video playback.
 
 ---
 
