@@ -103,7 +103,7 @@ If the Custom On/Off Menu is not installed, the script can still run standalone.
 - If no valid frame rate is available, no frame step is performed.
 - Browser seeking precision can slightly affect exact frame positioning.
 - On unusual frame rates, occasional empty clicks may happen. This is intentional to avoid skipping frames.
-- The buttons hide automatically when the player width becomes too small, matching the responsive behavior of Jellyfin’s chapter jump buttons in windowed mode.
+- The buttons hide automatically when the player width becomes too small, matching the responsive behavior of Jellyfin’s chapter jump buttons.
 - Custom On/Off Menu integration is optional.
 - No Jellyfin server setting is changed.
 - No backend interaction is required.
