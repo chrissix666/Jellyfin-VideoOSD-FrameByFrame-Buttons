@@ -299,16 +299,38 @@
     // container's existing baseline .25em margin. Same pattern as
     // Speed-Buttons -- clears back to the plain CSS baseline when the
     // configured gap is 0.
+    // FIX for a real, confirmed inconsistency found live: this only ever
+    // set margin on the CONTAINER, but the individual buttons inside it
+    // carry their OWN native margin from the "paper-icon-button-light"
+    // class (confirmed against the real source: "margin: 0 0.29em" in
+    // emby-button.scss), completely unaffected by the container's own
+    // margin. At "gap 0" this left a persistent ~0.29em gap on each
+    // outer edge regardless, while the ABLoop script (which applies its
+    // margin directly to its own single button, correctly overriding
+    // that same native class margin) showed a genuinely flush 0 gap,
+    // an inconsistency between addons that share this exact setting.
+    // Fixed by reaching past the container to the actual first/last
+    // button and overriding their own outer-facing margin directly.
+    // FIX, corrected after direct discussion with the user and
+    // confirmed against the real source: "gap 0" should mean "looks
+    // exactly like a native button", not "touching, 0px". Confirmed
+    // directly against the real native buttons in the same row: they
+    // are NOT flush against each other, each carries "margin: 0 0.29em"
+    // (from "paper-icon-button-light"), and ".videoOsdBottom .buttons"
+    // has no "gap" property of its own, so per-button margin is the
+    // ONLY spacing mechanism, and two adjacent native margins combine to
+    // ~0.58em visible gap. Native 0.29em is now the baseline here too,
+    // with the user's own configured gap value added on top.
     function applySpacing(container) {
         const gapEm = CONFIG.centeredGapEm || 0;
-        if (gapEm <= 0) {
-            container.style.marginLeft = '';
-            container.style.marginRight = '';
-            return;
-        }
-        const baseMarginEm = 0.25;
-        container.style.marginLeft = (baseMarginEm + gapEm) + 'em';
-        container.style.marginRight = (baseMarginEm + gapEm) + 'em';
+        const NATIVE_BUTTON_MARGIN_EM = 0.29;
+        const buttons = container.querySelectorAll('.' + BUTTON_CLASS);
+        const first = buttons[0];
+        const last = buttons[buttons.length - 1];
+        container.style.marginLeft = '';
+        container.style.marginRight = '';
+        if (first) first.style.marginLeft = (NATIVE_BUTTON_MARGIN_EM + gapEm) + 'em';
+        if (last) last.style.marginRight = (NATIVE_BUTTON_MARGIN_EM + gapEm) + 'em';
     }
 
     function removeButtons() {
@@ -346,9 +368,26 @@
     function startObserver() {
         if (observer) return;
 
+        // FIX for a possible cause of a real, live-observed hang: this
+        // observer watches the whole document.body subtree for any
+        // style/class change, which fires constantly during active video
+        // playback (Jellyfin's own progress bar updates style/class very
+        // frequently). Previously the callback ran synchronously on
+        // EVERY single mutation, and this is one of 3 currently-enabled
+        // mods with an essentially identical, independent observer, all
+        // reacting to the same mutations simultaneously. Debounced to at
+        // most once every 100ms: still responsive enough to catch newly
+        // inserted elements quickly, but coalesces a rapid burst of many
+        // mutations into a single actual check instead of running the
+        // callback hundreds or thousands of times per second.
+        let debounceTimer = null;
         observer = new MutationObserver(() => {
-            injectButtons();
-            tryRegisterWithCustoms();
+            if (debounceTimer) return;
+            debounceTimer = setTimeout(() => {
+                debounceTimer = null;
+                injectButtons();
+                tryRegisterWithCustoms();
+            }, 100);
         });
 
         observer.observe(document.body, {
