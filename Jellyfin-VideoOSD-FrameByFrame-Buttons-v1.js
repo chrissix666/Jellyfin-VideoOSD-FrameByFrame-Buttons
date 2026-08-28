@@ -1,6 +1,60 @@
 (function () {
     'use strict';
 
+    // ---- PLUGIN ADAPTER: config source, retrofit for VideoOSD Tweaks and Candy ----
+    const PLUGIN_GUID = '468b1980-7a6c-4e45-a129-24825085ece4';
+
+    const CONFIG = {
+        // ============================================================
+        // == SHARED VALUE (both standalone and plugin usage) ==
+        // Standalone: this mod never had a "hide on narrow window"
+        // setting before this retrofit at all, only a permanently
+        // fixed CSS media rule -- true here reproduces that exact
+        // original always-on behavior. Editable by hand here.
+        // Plugin: overwritten by applyPluginConfig() with the
+        // admin's "Hide on Narrow Window" setting once fetched.
+        // ============================================================
+        hideOnNarrowWindow: true,
+
+        // ============================================================
+        // == SHARED VALUE, correct for both cases here ==
+        // This mod never had ANY configurable spacing before this
+        // retrofit, only a permanently fixed .25em CSS margin (see
+        // applySpacing() below). 0 is correct as both the standalone
+        // default (produces an empty inline style, so the plain CSS
+        // .25em rule applies untouched, exactly like before) and the
+        // plugin's own "opt-in, not opt-out" baseline. No dual-mode
+        // branch needed here, same reasoning as Speed-Buttons: there
+        // was no pre-existing visible behavior at a nonzero default
+        // to preserve.
+        // ============================================================
+        centeredGapEm: 0
+    };
+
+    async function fetchPluginConfig() {
+        if (!window.ApiClient || typeof ApiClient.getPluginConfiguration !== 'function') {
+            return null;
+        }
+        try {
+            return await ApiClient.getPluginConfiguration(PLUGIN_GUID);
+        } catch (err) {
+            return null;
+        }
+    }
+
+    function applyPluginConfig(pluginConfig) {
+        if (!pluginConfig) return;
+
+        if (typeof pluginConfig.FrameByFrameHideOnNarrowWindow === 'boolean') {
+            CONFIG.hideOnNarrowWindow = pluginConfig.FrameByFrameHideOnNarrowWindow;
+        }
+
+        CONFIG.centeredGapEm = pluginConfig.FrameByFrameIndividualCenteredGapOverride
+            ? (Number(pluginConfig.FrameByFrameCenteredGapValue) || 0)
+            : (Number(pluginConfig.GeneralCenteredGap) || 0);
+    }
+    // ---- END PLUGIN ADAPTER ----
+
     const ADDON_ID = 'jfb-frame-buttons';
     const ADDON_NAME = 'Frame Buttons';
 
@@ -13,6 +67,7 @@
     const BUTTON_CLASS = 'jfb-frame-step-button';
     const CONTAINER_CLASS = 'jfb-frame-step-container';
     const STYLE_ID = 'jfb-frame-step-style';
+    const RESPONSIVE_STYLE_ID = 'jfb-frame-step-responsive-style';
 
     function isCustomsAvailable() {
         const api = window[CUSTOMS_API_NAME];
@@ -216,15 +271,44 @@
             .${BUTTON_CLASS}:active {
                 transform: scale(.94);
             }
-
-            @media all and (max-width: 50em) {
-                .videoOsdBottom .${CONTAINER_CLASS} {
-                    display: none !important;
-                }
-            }
         `;
+        // Note: the "@media (max-width: 50em) { display: none }" rule that
+        // used to live inline in this same stylesheet has been pulled out
+        // into its own separate, independently toggleable style tag, see
+        // refreshResponsiveStyle() below, same pattern as Speed-Buttons.
 
         document.head.appendChild(style);
+    }
+
+    // New: previously this behavior was permanently baked into injectStyle()
+    // above with no way to turn it off. Same pattern as A-B-Loop/Speed-Buttons.
+    function refreshResponsiveStyle() {
+        const existing = document.getElementById(RESPONSIVE_STYLE_ID);
+        if (!CONFIG.hideOnNarrowWindow) {
+            if (existing) existing.remove();
+            return;
+        }
+        if (existing) return;
+        const style = document.createElement('style');
+        style.id = RESPONSIVE_STYLE_ID;
+        style.textContent = `@media all and (max-width: 50em) { .videoOsdBottom .${CONTAINER_CLASS} { display: none !important; } }`;
+        document.head.appendChild(style);
+    }
+
+    // New: applies the General/Individual Centered Gap on top of the
+    // container's existing baseline .25em margin. Same pattern as
+    // Speed-Buttons -- clears back to the plain CSS baseline when the
+    // configured gap is 0.
+    function applySpacing(container) {
+        const gapEm = CONFIG.centeredGapEm || 0;
+        if (gapEm <= 0) {
+            container.style.marginLeft = '';
+            container.style.marginRight = '';
+            return;
+        }
+        const baseMarginEm = 0.25;
+        container.style.marginLeft = (baseMarginEm + gapEm) + 'em';
+        container.style.marginRight = (baseMarginEm + gapEm) + 'em';
     }
 
     function removeButtons() {
@@ -245,6 +329,7 @@
         if (!parent || parent.querySelector('.' + CONTAINER_CLASS)) return;
 
         injectStyle();
+        refreshResponsiveStyle();
 
         const container = document.createElement('div');
         container.className = CONTAINER_CLASS;
@@ -253,6 +338,7 @@
         container.appendChild(createButton('last_page', 'Next Frame', 1));
 
         transportBar.insertAdjacentElement('afterend', container);
+        applySpacing(container);
 
         console.log('[Jellyfin Frame Buttons] Buttons inserted.');
     }
@@ -382,4 +468,13 @@
             once: true
         });
     }
+
+    // ---- PLUGIN ADAPTER: apply fetched config once it arrives ----
+    fetchPluginConfig().then(function (pluginConfig) {
+        applyPluginConfig(pluginConfig);
+        refreshResponsiveStyle();
+        const container = document.querySelector('.' + CONTAINER_CLASS);
+        if (container) applySpacing(container);
+    });
+    // ---- END PLUGIN ADAPTER ----
 })();
