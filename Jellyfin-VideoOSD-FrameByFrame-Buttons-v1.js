@@ -32,14 +32,20 @@
     };
 
     async function fetchPluginConfig() {
-        if (!window.ApiClient || typeof ApiClient.getPluginConfiguration !== 'function') {
-            return null;
+        const maxAttempts = 120;
+        const delayMs = 250;
+        for (let attempt = 0; attempt < maxAttempts; attempt++) {
+            if (window.ApiClient && typeof ApiClient.getPluginConfiguration === 'function') {
+                try {
+                    const config = await ApiClient.getPluginConfiguration(PLUGIN_GUID);
+                    if (config) return config;
+                } catch (err) {
+                    // fall through, try again after the delay below
+                }
+            }
+            await new Promise(function (resolve) { setTimeout(resolve, delayMs); });
         }
-        try {
-            return await ApiClient.getPluginConfiguration(PLUGIN_GUID);
-        } catch (err) {
-            return null;
-        }
+        return null;
     }
 
     function applyPluginConfig(pluginConfig) {
@@ -233,8 +239,19 @@
                 height: 0;
                 min-height: 0;
                 max-height: 0;
-                margin-left: .25em;
-                margin-right: .25em;
+                // FIX for a real, confirmed bug found live: this used to
+                // hardcode "margin-left/right: .25em" here, completely
+                // independent of applySpacing()'s own margin logic on
+                // the individual first/last buttons. applySpacing()
+                // clearing the CONTAINER's own inline margin style only
+                // removes an inline override, it can't touch this CSS
+                // class rule, so this fixed .25em was silently adding on
+                // top of whatever applySpacing() computed, on both
+                // sides, all the time, regardless of the configured gap.
+                // Removed entirely: applySpacing() is now the single,
+                // sole source of truth for this container's spacing.
+                margin-left: 0;
+                margin-right: 0;
                 padding: 0;
                 overflow: visible;
                 flex: 0 0 6.4em;
