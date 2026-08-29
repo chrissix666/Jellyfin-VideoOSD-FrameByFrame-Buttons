@@ -429,8 +429,8 @@
         const container = document.createElement('div');
         container.className = CONTAINER_CLASS;
 
-        container.appendChild(createButton('first_page', 'Previous Frame', -1));
-        container.appendChild(createButton('last_page', 'Next Frame', 1));
+        container.appendChild(createButton('first_page', 'Previous frame', -1));
+        container.appendChild(createButton('last_page', 'Next frame', 1));
 
         transportBar.appendChild(container);
         applySpacing(container);
