@@ -255,8 +255,12 @@
         // ~2.7816em, and the bluish hover disc IS that box. Our buttons
         // were hardcoded 3.2em, so the disc rendered visibly larger
         // than the native neighbors. Buttons resized to the
-        // native-derived 2.7816em; container follows the same math:
-        // 2 x 2.7816em = 5.5632em. This script's own ".BUTTON:hover"
+        // native-derived 2.7816em; container follows the same math,
+        // INCLUDING the buttons' own native 0.29em class margins per
+        // side (forgetting these caused a real, user-visible overlap
+        // bug, see the Speed Buttons script for the full explanation):
+        // 2 x (0.29 + 2.7816 + 0.29) = 6.7232em, zero leftover, zero
+        // overflow. This script's own ".BUTTON:hover"
         // and ".BUTTON:active" rules were removed in the same pass:
         // the "paper-icon-button-light" class on the buttons already
         // gets the exact native hover/active styling from the active
@@ -271,9 +275,9 @@
                 display: inline-flex;
                 align-items: center;
                 justify-content: center;
-                width: 5.5632em;
-                min-width: 5.5632em;
-                max-width: 5.5632em;
+                width: 6.7232em;
+                min-width: 6.7232em;
+                max-width: 6.7232em;
                 height: 0;
                 min-height: 0;
                 max-height: 0;
@@ -281,7 +285,7 @@
                 margin-right: 0;
                 padding: 0;
                 overflow: visible;
-                flex: 0 0 5.5632em;
+                flex: 0 0 6.7232em;
                 vertical-align: middle;
             }
 
