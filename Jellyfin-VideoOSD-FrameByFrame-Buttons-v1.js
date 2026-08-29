@@ -225,6 +225,29 @@
     function injectStyle() {
         if (document.getElementById(STYLE_ID)) return;
 
+        // FIX for a real, confirmed bug found live: this used to
+        // hardcode "margin-left/right: .25em" here, completely
+        // independent of applySpacing()'s own margin logic on the
+        // individual first/last buttons. applySpacing() clearing the
+        // CONTAINER's own inline margin style only removes an inline
+        // override, it can't touch this CSS class rule, so this fixed
+        // .25em was silently adding on top of whatever applySpacing()
+        // computed, on both sides, all the time, regardless of the
+        // configured gap. Removed entirely: applySpacing() is now the
+        // single, sole source of truth for this container's spacing.
+        //
+        // FIX for a second, real, more fundamental bug found live during
+        // a later, more thorough review: the explanation above used to
+        // live as a "//" comment INSIDE the CSS text below (i.e.
+        // actually part of style.textContent, not a real JavaScript
+        // comment), which is invalid CSS syntax, confirmed with an
+        // actual browser render: a "//" line inside a CSS rule silently
+        // drops at least the following declaration, meaning the very
+        // "margin-left: 0" fix this comment was documenting had a real
+        // chance of never actually taking effect in a real browser,
+        // entirely undetected by earlier tests, since those only checked
+        // DOM ordering, not the actual rendered CSS margin. Moved out
+        // here as a genuine JS comment, the CSS text below is now valid.
         const style = document.createElement('style');
         style.id = STYLE_ID;
         style.textContent = `
@@ -239,17 +262,6 @@
                 height: 0;
                 min-height: 0;
                 max-height: 0;
-                // FIX for a real, confirmed bug found live: this used to
-                // hardcode "margin-left/right: .25em" here, completely
-                // independent of applySpacing()'s own margin logic on
-                // the individual first/last buttons. applySpacing()
-                // clearing the CONTAINER's own inline margin style only
-                // removes an inline override, it can't touch this CSS
-                // class rule, so this fixed .25em was silently adding on
-                // top of whatever applySpacing() computed, on both
-                // sides, all the time, regardless of the configured gap.
-                // Removed entirely: applySpacing() is now the single,
-                // sole source of truth for this container's spacing.
                 margin-left: 0;
                 margin-right: 0;
                 padding: 0;
@@ -364,8 +376,14 @@
 
         if (!video || !transportBar) return;
 
-        const parent = transportBar.parentElement;
-        if (!parent || parent.querySelector('.' + CONTAINER_CLASS)) return;
+        // FIX for a real, serious bug found live, same as the identical
+        // fix applied to the Speed script (see its own comment for the
+        // full explanation): this used to insert as a SIBLING of
+        // transportBar (one level OUTSIDE it), not inside it, so Core's
+        // own sort logic (which only ever looks inside transportBar for
+        // these 3 items) could never find this container, silently
+        // failing to include it in any configured sort order.
+        if (transportBar.querySelector('.' + CONTAINER_CLASS)) return;
 
         injectStyle();
         refreshResponsiveStyle();
@@ -376,7 +394,7 @@
         container.appendChild(createButton('first_page', 'Previous Frame', -1));
         container.appendChild(createButton('last_page', 'Next Frame', 1));
 
-        transportBar.insertAdjacentElement('afterend', container);
+        transportBar.appendChild(container);
         applySpacing(container);
 
         console.log('[Jellyfin Frame Buttons] Buttons inserted.');
