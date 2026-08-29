@@ -435,7 +435,6 @@
         transportBar.appendChild(container);
         applySpacing(container);
 
-        console.log('[Jellyfin Frame Buttons] Buttons inserted.');
     }
 
     function startObserver() {
@@ -483,7 +482,6 @@
         startObserver();
         injectButtons();
 
-        console.log('[Jellyfin Frame Buttons] Enabled.');
     }
 
     function disable() {
@@ -491,7 +489,6 @@
         stopObserver();
         removeButtons();
 
-        console.log('[Jellyfin Frame Buttons] Disabled.');
     }
 
     function tryRegisterWithCustoms() {
@@ -536,7 +533,6 @@
             enable();
         }
 
-        console.log('[Jellyfin Frame Buttons] Registered with Customs.');
 
         return true;
     }
@@ -570,7 +566,7 @@
 
         startCustomsRegistrationWatcher();
 
-        console.log('[Jellyfin Frame Buttons] Script loaded.');
+        console.log('[VideoOSD Frame Buttons] Script loaded.');
     }
 
     if (document.documentElement) {
@@ -587,6 +583,8 @@
         refreshResponsiveStyle();
         const container = document.querySelector('.' + CONTAINER_CLASS);
         if (container) applySpacing(container);
+    }).catch(function (err) {
+        console.error('[VideoOSD Frame Buttons] config apply failed:', err);
     });
     // ---- END PLUGIN ADAPTER ----
 })();
