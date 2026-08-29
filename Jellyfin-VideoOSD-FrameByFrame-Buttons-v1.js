@@ -248,6 +248,21 @@
         // entirely undetected by earlier tests, since those only checked
         // DOM ordering, not the actual rendered CSS margin. Moved out
         // here as a genuine JS comment, the CSS text below is now valid.
+        // FIX for the user-reported visual mismatch, same derivation as
+        // in the Speed Buttons script (see the detailed comment there,
+        // taken directly from the real 10.10.7 source): a native OSD
+        // button box is icon (1.66956521739em) + 2 x 0.556em padding =
+        // ~2.7816em, and the bluish hover disc IS that box. Our buttons
+        // were hardcoded 3.2em, so the disc rendered visibly larger
+        // than the native neighbors. Buttons resized to the
+        // native-derived 2.7816em; container follows the same math:
+        // 2 x 2.7816em = 5.5632em. This script's own ".BUTTON:hover"
+        // and ".BUTTON:active" rules were removed in the same pass:
+        // the "paper-icon-button-light" class on the buttons already
+        // gets the exact native hover/active styling from the active
+        // theme (the old hardcoded white rgba() here didn't even match
+        // Speed's hardcoded blue, let alone the theme), and the press
+        // scale has no native counterpart.
         const style = document.createElement('style');
         style.id = STYLE_ID;
         style.textContent = `
@@ -256,9 +271,9 @@
                 display: inline-flex;
                 align-items: center;
                 justify-content: center;
-                width: 6.4em;
-                min-width: 6.4em;
-                max-width: 6.4em;
+                width: 5.5632em;
+                min-width: 5.5632em;
+                max-width: 5.5632em;
                 height: 0;
                 min-height: 0;
                 max-height: 0;
@@ -266,7 +281,7 @@
                 margin-right: 0;
                 padding: 0;
                 overflow: visible;
-                flex: 0 0 6.4em;
+                flex: 0 0 5.5632em;
                 vertical-align: middle;
             }
 
@@ -276,29 +291,20 @@
                 color: inherit;
                 cursor: pointer;
                 padding: 0;
-                width: 3.2em;
-                height: 3.2em;
-                min-height: 3.2em;
-                max-height: 3.2em;
+                width: 2.7816em;
+                height: 2.7816em;
+                min-height: 2.7816em;
+                max-height: 2.7816em;
                 line-height: 1;
                 display: inline-flex;
                 align-items: center;
                 justify-content: center;
-                flex: 0 0 3.2em;
+                flex: 0 0 2.7816em;
             }
 
             .${BUTTON_CLASS} .material-icons,
             .${BUTTON_CLASS} .xlargePaperIconButton {
                 line-height: 1;
-            }
-
-            .${BUTTON_CLASS}:hover {
-                background: rgba(255, 255, 255, .18);
-                border-radius: 50%;
-            }
-
-            .${BUTTON_CLASS}:active {
-                transform: scale(.94);
             }
         `;
         // Note: the "@media (max-width: 50em) { display: none }" rule that
@@ -348,18 +354,46 @@
     // (from "paper-icon-button-light"), and ".videoOsdBottom .buttons"
     // has no "gap" property of its own, so per-button margin is the
     // ONLY spacing mechanism, and two adjacent native margins combine to
-    // ~0.58em visible gap. Native 0.29em is now the baseline here too,
-    // with the user's own configured gap value added on top.
+    // ~0.58em visible gap. Native 0.29em became the fixed baseline here
+    // too. (The gap itself no longer rides on these inner margins at
+    // all, see the follow-up fix directly below.)
+    // FIX for a real, confirmed bug found live, same root cause as in
+    // the Speed Buttons script: this container is pinned to a fixed
+    // width ("width/min-width/max-width" plus a matching fixed
+    // "flex: 0 0 <width>"
+    // in injectStyle() above, a deliberate earlier fix against phantom
+    // inner padding), so adding the configured gap onto the INNER
+    // first/last button margins was swallowed invisibly inside the
+    // fixed box and never produced any visible spacing towards the
+    // neighbors -- confirmed live by the user: the gap visibly worked
+    // on A-B Loop (bare button, margins sit directly on the element)
+    // but not here. The interim fix moved the gap onto the container's
+    // own OUTER margins -- that insight still stands and is exactly the
+    // mechanism the Core uses today, but WHO applies it changed
+    // immediately afterwards:
+    // CHANGED per the user's final spacing spec ("like the vanilla
+    // icons": every gap a custom addon participates in must grow by
+    // exactly 1x the configured value, NEVER 2x between two adjacent
+    // customs): the configured gap is no longer applied here at all.
+    // Symmetric per-element margins double the gap wherever two customs
+    // end up side by side, and only the Core script knows the final
+    // neighbor situation after its own sorting. The Core's
+    // applyCustomGapSpacing() therefore owns the gap entirely
+    // (neighbor-aware, re-derived after every sort) and sets the
+    // container margins on its own passes; this function only pins the
+    // inner first/last buttons to the native 0.29em baseline and
+    // leaves the container margins cleared (correct for the standalone
+    // case and for the moment between insertion and the Core's next
+    // pass).
     function applySpacing(container) {
-        const gapEm = CONFIG.centeredGapEm || 0;
         const NATIVE_BUTTON_MARGIN_EM = 0.29;
         const buttons = container.querySelectorAll('.' + BUTTON_CLASS);
         const first = buttons[0];
         const last = buttons[buttons.length - 1];
-        container.style.marginLeft = '';
-        container.style.marginRight = '';
-        if (first) first.style.marginLeft = (NATIVE_BUTTON_MARGIN_EM + gapEm) + 'em';
-        if (last) last.style.marginRight = (NATIVE_BUTTON_MARGIN_EM + gapEm) + 'em';
+        if (first) first.style.marginLeft = NATIVE_BUTTON_MARGIN_EM + 'em';
+        if (last) last.style.marginRight = NATIVE_BUTTON_MARGIN_EM + 'em';
+        if (container.style.marginLeft !== '') container.style.marginLeft = '';
+        if (container.style.marginRight !== '') container.style.marginRight = '';
     }
 
     function removeButtons() {
