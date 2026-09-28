@@ -106,7 +106,7 @@
     }
 
     function getTransportBar() {
-        return document.querySelector('.buttons.focuscontainer-x > div[dir="ltr"]');
+        return document.querySelector('#videoOsdPage:not(.hide) .buttons.focuscontainer-x > div[dir="ltr"]');
     }
 
     function parseFps(value) {
@@ -143,7 +143,7 @@
     async function getFpsFromSession() {
         if (!window.ApiClient?.getSessions) return null;
 
-        const sessions = await ApiClient.getSessions();
+        const sessions = await ApiClient.getSessions({ deviceId: ApiClient.deviceId() });
 
         const session =
             sessions.find(s => s.NowPlayingItem && s.PlayState) ||
@@ -152,7 +152,7 @@
         const item = session?.NowPlayingItem;
         if (!item) return null;
 
-        const itemName = item.Name || item.Id || 'unknown';
+        const itemName = item.Id || item.Name || 'unknown';
 
         if (cachedFps && cachedItemName === itemName) {
             return cachedFps;
