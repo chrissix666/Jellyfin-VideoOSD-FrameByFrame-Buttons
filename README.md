@@ -15,7 +15,7 @@ Adds frame-by-frame control buttons to the **Jellyfin Web VideoOSD**, letting yo
 This script adds two small frame step buttons directly into the VideoOSD transport bar.  
 It detects the current video’s frame rate from the active Jellyfin session and uses it to calculate accurate one-frame jumps.
 
-Tested on & Requirements: Windows 11, Chrome, Jellyfin Web 10.10.7, JavaScript Injector.
+Tested on & Requirements: Windows 11, Chrome, Jellyfin Web 10.10.7 and 12.0+, JavaScript Injector.
 
 <img src="Screenshot.png" width="300">
 
@@ -116,7 +116,7 @@ If the Custom On/Off Menu is not installed, the script can still run standalone.
 
 ## Tested On
 
-- Jellyfin Web 10.10.7
+- Jellyfin Web 10.10.7 and 12.0+
 - Google Chrome
 - Windows 11
 
